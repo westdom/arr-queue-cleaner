@@ -68,6 +68,20 @@ async def search_sonarr_season(series_id: str, season_number: str):
     )
 
 
+async def search_sonarr_episode(episode_id: str):
+    await makeRequest.make_request(
+        requests.post(
+            SONARR_API_URL + "/command",
+            json={
+                "name": "EpisodeSearch",
+                "episodeIds": [episode_id],
+            },
+            headers={"X-Api-Key": SONARR_API_KEY},
+        ),
+        False,
+    )
+
+
 async def remove_stalled_downloads(app_name: str, api_url: str, api_key: str):
     logging.debug(f"Checking {app_name} queue...")
     queue = await get_queue(api_url, api_key)

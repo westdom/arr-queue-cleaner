@@ -106,12 +106,12 @@ async def remove_stalled_downloads(
                         if category == "tv-sonarr":
                             SEASON_NUMBER = parse_season_number(item)
                             EPISODE_NUMBER = parse_episode_number(item)
-                            if (
-                                SEASON_NUMBER and EPISODE_NUMBER
-                            ) or SEASON_NUMBER == None:
+                            if SEASON_NUMBER and EPISODE_NUMBER and "episodeId" in item:
                                 await arrAPI.delete_queue_element(
-                                    api_url, api_key, item
+                                    api_url, api_key, item, remove_from_client=False
                                 )
+                                await delete_torrent(session, torrent)
+                                await arrAPI.search_sonarr_episode(item["episodeId"])
                             elif SEASON_NUMBER:
                                 await arrAPI.delete_queue_element(
                                     api_url, api_key, item, remove_from_client=False
