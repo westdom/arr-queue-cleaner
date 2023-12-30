@@ -53,40 +53,35 @@ def get_torrents_to_remove(torrents, category: str):
         for torrent in torrents:
             if torrent["category"] == category:
                 logging.debug(f'Processing {category} queue item: {torrent["name"]}')
-                if should_remove_torrent(torrent, category):
+                SHOULD_REMOVE_TORRENT = should_remove_torrent(torrent)
+                if SHOULD_REMOVE_TORRENT[0] == True:
+                    torrent["REMOVAL_REASON"] = SHOULD_REMOVE_TORRENT[1]
                     torrents_to_remove.append(torrent)
     return torrents_to_remove
 
 
-def should_remove_torrent(torrent, category: str):
+def should_remove_torrent(torrent):
     download_speed_kbs = torrent["dlspeed"] / 1024
     remove_torrent = False
+    reason = ""
 
     if torrent["state"] == "stalledDL":
-        logging.info(f'Removing stalled {category} download: {torrent["name"]}')
+        reason = "stalled"
         remove_torrent = True
-
-    if torrent["time_active"] > 60:
-        if torrent["state"] == "metaDL":
-            logging.info(
-                f'Removing stuck downloading metadata {category} download: {torrent["name"]}'
-            )
-            remove_torrent = True
-
-        elif (
-            DOWNLOAD_SPEED_CUTOFF
-            and torrent["state"] == "downloading"
-            and download_speed_kbs < float(DOWNLOAD_SPEED_CUTOFF)
-        ):
-            logging.info(
-                f'Removing slow {category} download ({"{:.2f}".format(download_speed_kbs)}kb/s): {torrent["name"]}'
-            )
-            remove_torrent = True
-
-        elif torrent["state"] == "downloading" and torrent["num_complete"] == 0:
-            logging.info(f'Removing seedless {category} download: {torrent["name"]}')
-            remove_torrent = True
-    return remove_torrent
+    elif torrent["state"] == "metaDL":
+        reason = "stuck downloading metadata"
+        remove_torrent = True
+    elif (
+        DOWNLOAD_SPEED_CUTOFF
+        and torrent["state"] == "downloading"
+        and download_speed_kbs < float(DOWNLOAD_SPEED_CUTOFF)
+    ):
+        reason = f"slow ({download_speed_kbs}kb/s)"
+        remove_torrent = True
+    elif torrent["state"] == "downloading" and torrent["num_complete"] == 0:
+        reason = "seedless"
+        remove_torrent = True
+    return remove_torrent, reason
 
 
 async def remove_stalled_downloads(
@@ -105,27 +100,61 @@ async def remove_stalled_downloads(
                     ):
                         if category == "tv-sonarr":
                             SEASON_NUMBER = parse_season_number(item)
-                            EPISODE_NUMBER = parse_episode_number(item)
-                            if SEASON_NUMBER and EPISODE_NUMBER and "episodeId" in item:
+                            if SEASON_NUMBER:
                                 await arrAPI.delete_queue_element(
-                                    api_url, api_key, item, remove_from_client=False
-                                )
-                                await delete_torrent(session, torrent)
-                                await arrAPI.search_sonarr_episode(item["episodeId"])
-                            elif SEASON_NUMBER:
-                                await arrAPI.delete_queue_element(
-                                    api_url, api_key, item, remove_from_client=False
+                                    api_url,
+                                    api_key,
+                                    item,
+                                    remove_from_client=False,
+                                    blocklist=True,
                                 )
                                 await delete_torrent(session, torrent)
                                 await arrAPI.search_sonarr_season(
                                     item["seriesId"], SEASON_NUMBER
                                 )
-                            else:
-                                logging.warning(
-                                    f'Did not delete and re-search sonarr download {item["title"]}'
+                                logging.info(
+                                    f"Removing {torrent['REMOVAL_REASON']} download: {item['series']['title'] if 'series' in item else item['title']} S{SEASON_NUMBER}"
                                 )
+                            else:
+                                await arrAPI.delete_queue_element(
+                                    api_url,
+                                    api_key,
+                                    item,
+                                    remove_from_client=True,
+                                    blocklist=True,
+                                )
+                                logging.info(
+                                    f"Removing {torrent['REMOVAL_REASON']} download: {item['series']['title'] if 'series' in item else item['title']}"
+                                )
+                                logging.warning(
+                                    f"Did not re-search sonarr download {item['series']['title'] if 'series' in item else item['title']}"
+                                )
+                        elif category == "radarr":
+                            await arrAPI.delete_queue_element(
+                                api_url,
+                                api_key,
+                                item,
+                                remove_from_client=False,
+                                blocklist=True,
+                            )
+                            await delete_torrent(session, torrent)
+                            await arrAPI.search_sonarr_season(
+                                item["seriesId"], SEASON_NUMBER
+                            )
+                            logging.info(
+                                f"Removing {torrent['REMOVAL_REASON']} download: {item['series']['title'] if 'series' in item else item['title']} S{SEASON_NUMBER}"
+                            )
                         else:
-                            await arrAPI.delete_queue_element(api_url, api_key, item)
+                            await arrAPI.delete_queue_element(
+                                api_url,
+                                api_key,
+                                item,
+                                remove_from_client=True,
+                                blocklist=True,
+                            )
+                            logging.info(
+                                f"Removing {torrent['REMOVAL_REASON']} download: {item['movie']['title'] if 'movie' in item else item['title']}"
+                            )
                         break
 
 
@@ -133,7 +162,17 @@ def parse_season_number(item):
     if "seasonNumber" in item:
         return item["seasonNumber"]
     else:
-        PARSED_SEASON_NUMBER = re.search(r"S\d\d|s\d\d", item["title"])
+        PARSED_SEASON_AND_EPISODE_NUMBER = re.search(
+            r"(s|S)\d\d+(?:\S){0,2}(e|E)\d\d+", item["title"]
+        )
+        if PARSED_SEASON_AND_EPISODE_NUMBER:
+            PARSED_SEASON_NUMBER = re.search(
+                r"(s|S)\d\d+",
+                PARSED_SEASON_AND_EPISODE_NUMBER.group(0),
+            )
+            return int(PARSED_SEASON_NUMBER.group(0)[1:])
+
+        PARSED_SEASON_NUMBER = re.search(r"(s|S)\d\d+", item["title"])
         if PARSED_SEASON_NUMBER:
             return int(PARSED_SEASON_NUMBER.group(0)[1:])
 
@@ -142,6 +181,12 @@ def parse_episode_number(item):
     if "episode" in item and "episodeNumber" in item["episode"]:
         return item["episode"]["episodeNumber"]
     else:
-        PARSED_EPISODE_NUMBER = re.search(r"E\d\d|e\d\d", item["title"])
-        if PARSED_EPISODE_NUMBER:
+        PARSED_SEASON_AND_EPISODE_NUMBER = re.search(
+            r"(s|S)\d\d+(?:\S){0,2}(e|E)\d\d+", item["title"]
+        )
+        if PARSED_SEASON_AND_EPISODE_NUMBER:
+            PARSED_EPISODE_NUMBER = re.search(
+                r"(e|E)\d\d+",
+                PARSED_SEASON_AND_EPISODE_NUMBER.group(0),
+            )
             return int(PARSED_EPISODE_NUMBER.group(0)[1:])
