@@ -138,11 +138,8 @@ async def remove_stalled_downloads(
                                 blocklist=True,
                             )
                             await delete_torrent(session, torrent)
-                            await arrAPI.search_sonarr_season(
-                                item["seriesId"], SEASON_NUMBER
-                            )
                             logging.info(
-                                f"Removing {torrent['REMOVAL_REASON']} download: {item['series']['title'] if 'series' in item else item['title']} S{SEASON_NUMBER}"
+                                f"Removing {torrent['REMOVAL_REASON']} download: {item['title']}"
                             )
                         else:
                             await arrAPI.delete_queue_element(
