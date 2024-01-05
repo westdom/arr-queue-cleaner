@@ -68,7 +68,7 @@ async def main():
                 )
             if RADARR_4K_API_KEY:
                 await qbittorrentAPI.remove_stalled_downloads(
-                    session, torrents, "radarr", RADARR_4K_API_URL, RADARR_4K_API_KEY
+                    session, torrents, "radarr-4k", RADARR_4K_API_URL, RADARR_4K_API_KEY
                 )
             if LIDARR_API_KEY:
                 await qbittorrentAPI.remove_stalled_downloads(

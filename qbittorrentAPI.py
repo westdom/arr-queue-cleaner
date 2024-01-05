@@ -129,7 +129,7 @@ async def remove_stalled_downloads(
                                 logging.warning(
                                     f"Did not re-search sonarr download {item['series']['title'] if 'series' in item else item['title']}"
                                 )
-                        elif category == "radarr":
+                        elif category == "radarr" or category == "radarr-4k":
                             await arrAPI.delete_queue_element(
                                 api_url,
                                 api_key,
