@@ -119,10 +119,11 @@ def cleanup_hit_counter(torrents):
     """Clean up hit counter for torrents that are no longer in the list"""
     current_hashes = {torrent["hash"] for torrent in torrents}
     
-    for torrent_hash in torrent_hit_counter:
-        if torrent_hash not in current_hashes:
-            logging.debug(f'Removing stale hit counter entry for hash: {torrent_hash}')
-            del torrent_hit_counter[torrent_hash]    
+    keys_to_delete = [torrent_hash for torrent_hash in torrent_hit_counter if torrent_hash not in current_hashes]
+    
+    for torrent_hash in keys_to_delete:
+        logging.debug(f'Removing stale hit counter entry for hash: {torrent_hash}')
+        del torrent_hit_counter[torrent_hash]    
 
 async def remove_stalled_downloads(
     session: requests, torrents, category: str, api_url: str, api_key: str
