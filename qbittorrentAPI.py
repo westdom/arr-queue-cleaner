@@ -187,6 +187,7 @@ async def remove_stalled_downloads(
                                 blocklist=True,
                             )
                             await delete_torrent(session, torrent)
+                            await arrAPI.search_radarr_movie(item["movieId"])
                             logging.info(
                                 f"Removing {category}, Reason: {torrent['REMOVAL_REASON']}, Download: {item['title']}"
                             )
@@ -201,11 +202,10 @@ async def remove_stalled_downloads(
                             logging.info(
                                 f"Removing {category}, Reason: {torrent['REMOVAL_REASON']}, Download: {item['title']}"
                             )
+                            logging.warning(
+                                f"Did not re-search {category} download {item['title']}"
+                            )
                         break
-                    else:
-                        logging.warning(
-                            f"Did not find {item['title']} in {torrent['name']}"
-                        )
 
 
 def parse_season_number(item):

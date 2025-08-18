@@ -82,6 +82,17 @@ async def search_sonarr_episode(episode_id: str):
     )
 
 
+async def search_radarr_movie(movie_id: str):
+    await makeRequest.make_request(
+        requests.post(
+            RADARR_API_URL + "/command",
+            json={"name": "MovieSearch", "movieIds": [movie_id]},
+            headers={"X-Api-Key": RADARR_API_KEY},
+        ),
+        False,
+    )
+
+
 async def remove_stalled_downloads(app_name: str, api_url: str, api_key: str):
     logging.debug(f"Checking {app_name} queue...")
     queue = await get_queue(api_url, api_key)
