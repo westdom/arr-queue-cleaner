@@ -86,7 +86,7 @@ async def search_radarr_movie(movie_id: str):
     await makeRequest.make_request(
         requests.post(
             RADARR_API_URL + "/command",
-            json={"name": "MovieSearch", "movieIds": [movie_id]},
+            json={"name": "MoviesSearch", "movieIds": [movie_id]},
             headers={"X-Api-Key": RADARR_API_KEY},
         ),
         False,
