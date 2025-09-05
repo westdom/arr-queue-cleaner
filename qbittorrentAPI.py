@@ -92,6 +92,12 @@ def get_torrents_to_remove(torrents, category: str):
 
 
 def should_remove_torrent(torrent):
+    # Check if torrent has "ignore" tag - if so, skip processing
+    torrent_tags = torrent["tags"]
+    if torrent_tags and "ignore" in [tag.strip().lower() for tag in torrent_tags.split(",")]:
+        logging.debug(f'Skipping torrent {torrent["name"]} - has "ignore" tag')
+        return False, "ignored"
+    
     download_speed_kbs = torrent["dlspeed"] / 1024
     remove_torrent = False
     reason = ""
