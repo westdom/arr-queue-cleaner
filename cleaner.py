@@ -41,10 +41,6 @@ async def main():
         logging.warning("Sonarr API key is not set. Skipping Sonarr queue checks.")
     if not RADARR_API_KEY:
         logging.warning("Radarr API key is not set. Skipping Radarr queue checks.")
-    if not RADARR_4K_API_KEY:
-        logging.warning(
-            "Radarr 4k API key is not set. Skipping 4k Radarr queue checks."
-        )
     if not LIDARR_API_KEY:
         logging.warning("Lidarr API key is not set. Skipping Lidarr queue checks.")
 
@@ -66,10 +62,6 @@ async def main():
                 await qbittorrentAPI.remove_stalled_downloads(
                     session, torrents, "radarr", RADARR_API_URL, RADARR_API_KEY
                 )
-            if RADARR_4K_API_KEY:
-                await qbittorrentAPI.remove_stalled_downloads(
-                    session, torrents, "radarr-4k", RADARR_4K_API_URL, RADARR_4K_API_KEY
-                )
             if LIDARR_API_KEY:
                 await qbittorrentAPI.remove_stalled_downloads(
                     session, torrents, "lidarr", RADARR_API_URL, LIDARR_API_KEY
@@ -84,10 +76,6 @@ async def main():
             if RADARR_API_KEY:
                 await arrAPI.remove_stalled_downloads(
                     "Radarr", RADARR_API_URL, RADARR_API_KEY
-                )
-            if RADARR_4K_API_KEY:
-                await arrAPI.remove_stalled_downloads(
-                    "Radarr", RADARR_4K_API_URL, RADARR_4K_API_KEY
                 )
             if LIDARR_API_KEY:
                 await arrAPI.remove_stalled_downloads(

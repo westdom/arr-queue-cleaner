@@ -143,11 +143,13 @@ async def remove_stalled_downloads(
 
         if queue is not None and "records" in queue:
             for torrent in torrents_to_remove:
+                matched_queue_item = False
                 for item in queue["records"]:
                     if "title" in item and (
                         torrent["name"] in item["title"]
                         or item["title"] in torrent["name"]
                     ):
+                        matched_queue_item = True
                         # Remove from hit counter since we're actually removing the torrent
                         torrent_hash = torrent["hash"]
                         if torrent_hash in torrent_hit_counter:
@@ -213,6 +215,16 @@ async def remove_stalled_downloads(
                                 f"Did not re-search {category} download {item['title']}"
                             )
                         break
+                # If no matching queue item was found, delete from qBittorrent and warn
+                if not matched_queue_item:
+                    torrent_hash = torrent["hash"]
+                    if torrent_hash in torrent_hit_counter:
+                        logging.debug(f'Removing hit counter entry for {torrent["name"]} after deletion without queue match')
+                        del torrent_hit_counter[torrent_hash]
+                    await delete_torrent(session, torrent)
+                    logging.warning(
+                        f"Deleting {category} torrent '{torrent['name']}' (Reason: {torrent.get('REMOVAL_REASON', 'N/A')}) - no matching item found in queue"
+                    )
 
 
 def parse_season_number(item):
